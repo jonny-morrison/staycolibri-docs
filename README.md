@@ -728,4 +728,74 @@ The server has been receiving brute force attempts targeting WordPress login. Re
 
 ---
 
-Documentation generated September 2026. Update this file whenever snippets are added, modified or removed.
+---
+
+## Version History
+
+| Version | Date | Changes |
+|---|---|---|
+| 1.0 | September 2026 | Initial documentation |
+| 1.1 | October 2026 | Added host cancellation flow (snippet 3.22), updated go-live checklist, added security risks section |
+
+---
+
+## 3.22 Host Cancellation Flow
+**Type:** PHP + JS
+**Hook:** `trashed_post` on `hp_booking`, `wp_footer` on `/account/bookings/`, `wp_ajax_sc_store_cancel_reason`
+
+**What it does:**
+
+**Part 1 — Cancel modal (JS):**
+Injects a reason dropdown and optional/mandatory text field into the HivePress cancel booking modal (`#booking_cancel_modal`) on the host bookings page. The dropdown has six options:
+- Property unavailable — maintenance or damage
+- Force majeure / emergency (flood, hurricane etc.)
+- Double booking / calendar error
+- Host illness or family emergency
+- Guest behaviour concerns (prior to check-in)
+- Other (please specify)
+
+For options 1-5 the text field is optional. For "Other" it is mandatory. The form cannot be submitted without a reason selected. Before the HivePress DELETE request fires, the reason is stored via AJAX in a WordPress transient keyed to the booking ID (5 minute TTL).
+
+**Part 2 — AJAX handler (PHP):**
+Receives the cancellation reason via `wp_ajax_sc_store_cancel_reason`, validates the nonce, and stores it in a transient `sc_cancel_reason_{booking_id}`.
+
+**Part 3 — trashed_post hook (PHP):**
+Fires when HivePress trashes the booking post. Reads the stored reason from the transient. If no reason is found (e.g. admin-initiated cancellation) the hook exits silently.
+
+Data gathered:
+- Listing title from `$post->post_parent` (hp_listing)
+- Host name and email from listing post_author
+- Check-in / check-out from booking post meta `hp_start_time` / `hp_end_time`
+- Order found via WooCommerce order item meta `hp_booking`
+- Guest name and email from WooCommerce billing fields
+- Order total, accommodation amount, platform fee (order total minus accommodation amount)
+- Extras from order item meta `hp_price_extras`
+
+**Admin email** sent to `jonny@auno.uk` containing:
+- Cancellation reason
+- Property name, check-in, check-out, extras
+- Host name and email
+- Guest name and email
+- Refund breakdown: order total / host can refund / platform fee (admin must action)
+- Link to WooCommerce order in wp-admin
+- Link to front-end order page
+
+**Guest email** sent to guest billing email (bilingual Spanish/English) containing:
+- Booking reference, property, dates
+- Full refund amount and 3 working day processing commitment
+- Note that refund may arrive in two separate payments
+- Note that refunds may take up to 14 business days depending on their bank and Stay Colibri cannot affect these timescales
+
+**Important notes:**
+- For ALL host cancellations the guest is entitled to a full refund including the platform fee
+- The host can only refund the accommodation amount via the front-end order page
+- Admin must manually refund the platform fee via the WooCommerce order in wp-admin
+- HivePress may also send its own cancellation notification — this is in addition to it
+
+**Troubleshooting:**
+- If admin email is not received, check the transient was stored — add `error_log` to the AJAX handler to confirm
+- If check-in/check-out show as Unknown, check `hp_start_time` and `hp_end_time` exist on the booking post in phpMyAdmin
+- If the reason dropdown does not appear, check the snippet is firing on `/account/bookings/` URLs
+- If the form submits without a reason, check the JS event listener is not being blocked by another script
+
+Documentation last updated October 2026. Update this file whenever snippets are added, modified or removed.
