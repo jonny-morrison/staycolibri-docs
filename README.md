@@ -1,5 +1,5 @@
 # Stay Colibri — Site Documentation
-**Last Updated:** October 2026 (v1.19)  
+**Last Updated:** October 2026 (v1.20)  
 **Platform:** WordPress Multisite (HivePress/RentalHive)  
 **URL:** https://staycolibri.com  
 **Subsite prefix:** `wp_14_`  
@@ -309,7 +309,7 @@ All are PHP snippets set to **Auto Insert → Run Everywhere** (a header/footer 
 | No. | Snippet | Version | Notes |
 |---|---|---|---|
 | 3.0 | Config | V1.0 | |
-| 3.2 | Submit Listing Access Control | V1.0 | Stays active after launch |
+| 3.2 | Submit Listing Access Control | **V1.1** | Stays active after launch; verified hosts need a payout method |
 | 3.3 | Listing Page Map Notice | V1.0 | |
 | 3.4 | Payment Setup Page | **V3.2** | Host change email on the 3.31 design |
 | 3.5 | Gateway Routing | V3 | |
@@ -370,18 +370,25 @@ Set in **HivePress → Settings → Users → Commission**. HivePress Marketplac
 
 ---
 
-### 3.2 Submit Listing Access Control
+### 3.2 V1.1 Submit Listing Access Control
 **Type:** PHP  
 **Hook:** `template_redirect`  
 **What it does:** Intercepts all `/submit-listing*` URLs and redirects based on user status:
 - Not logged in → `/whycolibri/`
 - Logged in as guest (107) → `/guest-host/`
 - Logged in as unverified host (108, `hp_verified` not 1) → `/verification-pending/`
-- Verified host → allowed through
+- Verified host without a payout method → `/payment-setup/` (V1.1)
+- Verified host with a payout method → allowed through
+
+**Why (V1.1):** a host with no payout method could list and take bookings. At payment the ledger wrote a BOOKING line, but 3.6 created no cash balance entry or Tropipay payout record, so the host would never be paid and the ledger showed "Unknown payout method" and did not reconcile (found on a test booking, October 2026).
+
+**Function:** `sc_host_payout_ready($user_id)` — true when `sc_payment_model` is `tropipay` with a non-empty `sc_tropipay_email`, or `cash` with a non-empty `sc_cash_address`. Wrapped in `function_exists` so other snippets can call it (e.g. a checkout guard — section 10).
 
 **Troubleshooting:**
 - If hosts cannot access submit listing, check `hp_verified` is set to `1` in user meta
 - Check `hp_acctype` is `108` for host accounts
+- Verified host sent to `/payment-setup/` after completing it: check `sc_payment_model` is exactly `tropipay` or `cash` and the matching email or address is filled in
+- After saving the payment setup form the host stays on `/payment-setup/` and must go back to submit listing themselves
 
 ---
 
@@ -1763,6 +1770,7 @@ Still recommended:
 | **Section 6 checkout window** — Tropipay payout records are only created for orders whose `_sc_checkout_date` is exactly midnight today or tomorrow | If the daily cron misses that window (no site traffic, outage), the booking **never gets a payout record** and the host is not paid. The ledger shows it as "Eligible — awaiting payout · Tropipay payout record not yet created" | Fix planned: match `≤ tomorrow`. Check for stale unprocessed test orders first |
 | **`wc_get_orders()` ignores `meta_query`** on this site's legacy order storage | Returns every order. Caused the V3.3–V3.8 dashboard Tropipay bug | Fixed in 3.7/3.15/3.24; always use `sc_ledger_find_orders()` for meta lookups |
 | **Orders partially refunded before V3.5** | 5b's refund split used the already-reduced amount; a second partial refund over-deducted the host; Tropipay partial refunds before payout creation were ignored | Fixed in V3.5; check historical partially-refunded orders manually |
+| **Listings whose host has no payout method can still be booked** | 3.2 V1.1 stops new listings, but a listing created before it (or a host whose method is later cleared) can still be paid for. The ledger records the BOOKING but 3.6 creates no payout entry, so the host is not paid and the ledger does not reconcile | Add a checkout guard using `sc_host_payout_ready()`; meanwhile check every host has a payout method |
 | **One booking per order** assumed | 3.6 Section 1 and the ledger read the first booking item only | Holds for current checkout flow |
 | **Pre-V3.4 cash batches** | `sc_fee_amount` holds the old whole-balance fee; no `batch_ref`/`payout_ref` | Ledger derives the fee from `hp_amount`; statuses show "pre-V3.4 batch" |
 | **Direct database edits** | Not seen by the ledger watchers; reconciliation will flag them | Use the admin tools |
@@ -1824,5 +1832,6 @@ Still recommended:
 | 1.17 | October 2026 | 3.31 V2.6: email font changed from Trebuchet MS to Verdana (all emails built with 3.31, including wrapped HivePress emails). |
 | 1.18 | October 2026 | **Images and login security.** New 3.33 V1.0 Image Size URL Fix: Next3Cloud's `wp_get_attachment_image_src` filter returned the original file (at 150 × 150) for every size, so listing galleries showed portrait photos taller and every image loaded full size; 3.33 rebuilds size URLs from the metadata. New 3.34 V1.1 Turnstile on HivePress Account Forms: server-side Turnstile check on HivePress's login, register, forgot-password and reset-password REST endpoints (fails closed) plus the widget in the modals (V1.0 matched `action` instead of `data-action`; V1.1 also renders on modal open). New sections 4.6 Cloudflare (Turnstile, XML-RPC block, free-plan rate limit kept at 5 per 10 s because of Cuban carrier-grade NAT) and 4.7 Next3Cloud (two bugs reported: image sizes; WP-CLI fatal). Image sizes table added to section 2. Crontab must use `curl`/`php wp-cron.php`, not WP-CLI. Troubleshooting, checklist and known issues updated; Turnstile removed from the Backlog. |
 | 1.19 | October 2026 | **Cookie consent and privacy.** New section 4.8 Pressidium Cookie Consent: opt-in banner with equal Accept/Reject, cookie inventory, Order Attribution (`sbjs_*`) gated as Analytics via Blocked Scripts, settings file, revision rule, tests; privacy and cookie policy at `/privacy/` (controller details, named vs described suppliers, retention). New 3.35 V1.0.1 Mapbox Storage Block (stops `mapbox.*` localStorage identifiers; V1.0 failed WPCode's parser) and 3.36 V1.0 Cookie Settings Menu Link (footer `#cookie-settings` opens the settings; floating button off). Didit (4.2): Spanish contracting entity, retention set to 10 years with rationale, consent screen confirmed, model-training opt-out pending. Transpaygo named as cash delivery partner (internal docs only). Lightsail region London; SES `eu-west-1`. 3.8 and 3.25 notes: allow `/privacy/`. New checklist section "Privacy and cookies"; known issues: `customer-post-data`, Mapbox block and token, attribution coverage; backlog: re-verify long-standing hosts. |
+| 1.20 | October 2026 | 3.2 V1.1 Submit Listing Access Control: verified hosts without a payout method are redirected to `/payment-setup/`; new helper `sc_host_payout_ready()`. Known issue added: listings whose host has no payout method can still be booked (checkout guard to add). |
 
 Documentation last updated October 2026. Update this file whenever snippets are added, modified or removed.
