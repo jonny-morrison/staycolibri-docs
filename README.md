@@ -1,5 +1,5 @@
 # Stay Colibri — Site Documentation
-**Last Updated:** October 2026 (v1.20)  
+**Last Updated:** November 2026 (v1.21)  
 **Platform:** WordPress Multisite (HivePress/RentalHive)  
 **URL:** https://staycolibri.com  
 **Subsite prefix:** `wp_14_`  
@@ -1295,6 +1295,8 @@ Sandbox client ID, client secret and account ID: password manager.
 
 **Security note:** Live Tropipay credentials were rotated in October 2026 after accidental GitHub exposure. Credentials, client IDs and secrets must never be committed to the repository — including sandbox ones.
 
+**Tropipay security incident (October 2026):** Titanes Telecomunicaciones, S.A. (the regulated payment institution; Tropipay is its authorised agent) notified customers under GDPR Article 34 of unauthorised access to an internal Tropipay tool, detected 28 October 2026, with activity from August 2026. Exposed: names and contact details, identity-verification data including document numbers, balances and withdrawal history, and password hashes. Titanes reports no unauthorised fund movements or account access. Tropipay forces a password change at next login. The notice does not say whether API credentials were affected. **Response (November 2026):** Stay Colibri's Tropipay API keys and account password rotated; 2FA confirmed enabled on the Tropipay account. Expect phishing that quotes real balances or payouts, aimed at us and at Tropipay hosts.
+
 **Plugin note:** the Tropipay WooCommerce plugin logs `Undefined variable $hidden` at `wc-tropipay.php` line 322 on every load. Harmless, but it fills `debug.log` (section 10).
 
 ---
@@ -1833,5 +1835,6 @@ Still recommended:
 | 1.18 | October 2026 | **Images and login security.** New 3.33 V1.0 Image Size URL Fix: Next3Cloud's `wp_get_attachment_image_src` filter returned the original file (at 150 × 150) for every size, so listing galleries showed portrait photos taller and every image loaded full size; 3.33 rebuilds size URLs from the metadata. New 3.34 V1.1 Turnstile on HivePress Account Forms: server-side Turnstile check on HivePress's login, register, forgot-password and reset-password REST endpoints (fails closed) plus the widget in the modals (V1.0 matched `action` instead of `data-action`; V1.1 also renders on modal open). New sections 4.6 Cloudflare (Turnstile, XML-RPC block, free-plan rate limit kept at 5 per 10 s because of Cuban carrier-grade NAT) and 4.7 Next3Cloud (two bugs reported: image sizes; WP-CLI fatal). Image sizes table added to section 2. Crontab must use `curl`/`php wp-cron.php`, not WP-CLI. Troubleshooting, checklist and known issues updated; Turnstile removed from the Backlog. |
 | 1.19 | October 2026 | **Cookie consent and privacy.** New section 4.8 Pressidium Cookie Consent: opt-in banner with equal Accept/Reject, cookie inventory, Order Attribution (`sbjs_*`) gated as Analytics via Blocked Scripts, settings file, revision rule, tests; privacy and cookie policy at `/privacy/` (controller details, named vs described suppliers, retention). New 3.35 V1.0.1 Mapbox Storage Block (stops `mapbox.*` localStorage identifiers; V1.0 failed WPCode's parser) and 3.36 V1.0 Cookie Settings Menu Link (footer `#cookie-settings` opens the settings; floating button off). Didit (4.2): Spanish contracting entity, retention set to 10 years with rationale, consent screen confirmed, model-training opt-out pending. Transpaygo named as cash delivery partner (internal docs only). Lightsail region London; SES `eu-west-1`. 3.8 and 3.25 notes: allow `/privacy/`. New checklist section "Privacy and cookies"; known issues: `customer-post-data`, Mapbox block and token, attribution coverage; backlog: re-verify long-standing hosts. |
 | 1.20 | October 2026 | 3.2 V1.1 Submit Listing Access Control: verified hosts without a payout method are redirected to `/payment-setup/`; new helper `sc_host_payout_ready()`. Known issue added: listings whose host has no payout method can still be booked (checkout guard to add). |
+| 1.21 | November 2026 | Section 4.1: added Tropipay security incident note (detected 28 October 2026) and our response — API keys and password rotated, 2FA confirmed |
 
-Documentation last updated October 2026. Update this file whenever snippets are added, modified or removed.
+Documentation last updated November 2026. Update this file whenever snippets are added, modified or removed.
